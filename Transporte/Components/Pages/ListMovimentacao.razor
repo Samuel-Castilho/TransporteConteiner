@@ -1,0 +1,127 @@
+﻿@using Models
+@using MudBlazor
+@using Transporte.Components.Modals
+@using Transporte.Persistencia.Services.Interfaces
+@attribute [Route(RouteContants.ListMovimentacao)]
+
+@inject IMovimentacaoService _MovimentacaoService
+@inject IDialogService _dialogService
+@inject ISnackbar _snackBar
+
+
+@if (OnInitializedCompleted)
+{
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddMovimentacaoModal">Adicionar Movimentacao</MudButton>
+    <MudDataGrid Items="@ListaMovimentacao" Filterable="false" SortMode="@SortMode.None" Groupable="false">
+        <Columns>
+            <PropertyColumn Property="x => x.NumeroConteiner" Title="Numero do conteiner" />
+            <PropertyColumn Property="x => x.Tipo" />
+            <PropertyColumn Property="x => x.DataInicio" Format="dd/MM/yyyy" Title="Data Inicio" />
+            <PropertyColumn Property="x => x.DataFim" Format="dd/MM/yyyy" Title="Data Fim" />
+
+            <TemplateColumn CellClass="d-flex justify-end">
+                <CellTemplate>
+                    <MudStack Row>
+                        <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@(()=>OpenEditMovimentacaoModal(context.Item.Id))" />
+                        <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Delete" OnClick="@(()=>OpenDeleteMovimentacaoModal(context.Item))" />
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+}
+else
+{
+    <span>Carregando ...</span>
+}
+
+
+
+
+@code {
+
+    List<Movimentacao> ListaMovimentacao { get; set; }
+
+    bool OnInitializedCompleted = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ListaMovimentacao = await _MovimentacaoService.GetAllAsync();
+        OnInitializedCompleted = true;
+    }
+
+
+    private async Task OpenAddMovimentacaoModal()
+    {
+        _snackBar.Clear();
+        _snackBar.Configuration.PositionClass = Defaults.Classes.Position.BottomRight;
+
+        var dialog = await _dialogService.ShowAsync<CadMovimentacaoModal>("Cadastrar Movimentacao");
+        var result = await dialog.Result;
+
+        Movimentacao novoMovimentacao = result.Data as Movimentacao;
+
+        if (novoMovimentacao is null)
+        {
+            _snackBar.Add("Operacao cancelada", Severity.Normal);
+            return;
+        }
+
+        await _MovimentacaoService.CreateAsync(novoMovimentacao);
+        ListaMovimentacao.Add(novoMovimentacao);
+
+        _snackBar.Add("Movimentacao adicionado com sucesso", Severity.Normal);
+
+
+        return;
+    }
+
+    private async Task OpenEditMovimentacaoModal(int numero)
+    {
+        _snackBar.Clear();
+        _snackBar.Configuration.PositionClass = Defaults.Classes.Position.BottomRight;
+
+        var parameters = new DialogParameters<CadMovimentacaoModal>
+        {
+            { x => x.MovimentacaoId, numero },
+        };
+
+        var dialog = await _dialogService.ShowAsync<CadMovimentacaoModal>("Editar Movimentacao", parameters);
+        var result = await dialog.Result;
+
+        Movimentacao novoMovimentacao = result.Data as Movimentacao;
+
+        if (novoMovimentacao is null)
+        {
+            _snackBar.Add("Operacao cancelada", Severity.Normal);
+            return;
+        }
+
+        await _MovimentacaoService.UpdateAsync(novoMovimentacao);
+        ListaMovimentacao.RemoveAll(x => x.Id == novoMovimentacao.Id);
+        ListaMovimentacao.Add(novoMovimentacao);
+
+        _snackBar.Add("Movimentacao Editado com sucesso", Severity.Normal);
+        return;
+    }
+
+    private async Task OpenDeleteMovimentacaoModal(Movimentacao obj)
+    {
+        bool? deletado = await _dialogService.ShowMessageBox($"Excluir Movimentacao do conteiner {obj.NumeroConteiner}", $"Certeza que deseja exlcuir o Movimentacao do {obj.NumeroConteiner}?", "Exlcuir", "Cancelar");
+
+        if (deletado is not null && deletado.Value)
+        {
+            await _MovimentacaoService.DeleteByIdAsync(obj.Id);
+            ListaMovimentacao.Remove(obj);
+            _snackBar.Add($"Movimentacao do conteiner {obj.NumeroConteiner} excluido com sucesso", Severity.Normal);
+
+        }
+        else
+        {
+            _snackBar.Add("Operacao cancelada", Severity.Normal);
+        }
+
+    }
+
+}

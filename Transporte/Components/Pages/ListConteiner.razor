@@ -1,0 +1,125 @@
+﻿@using Models
+@using MudBlazor
+@using Transporte.Components.Modals
+@using Transporte.Persistencia.Services.Interfaces
+@attribute [Route(RouteContants.ListConteiner)]
+
+@inject IConteinerService _conteinerService
+@inject IDialogService _dialogService
+@inject ISnackbar _snackBar
+
+
+@if (OnInitializedCompleted)
+{
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenAddConteinerModal">Adicionar Conteiner</MudButton>
+    <MudDataGrid Items="@ListaConteiner" Filterable="false" SortMode="@SortMode.None" Groupable="false">
+    <Columns>
+        <PropertyColumn Property="x => x.Numero" />
+        <PropertyColumn Property="x => x.Cliente" />
+        <PropertyColumn Property="x => x.Tipo" Title="Tipo" />
+        <PropertyColumn Property="x => x.Categoria" />
+            
+        <TemplateColumn CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudStack Row>
+                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@(()=>OpenEditConteinerModal(context.Item.Numero))" />
+                        <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Delete" OnClick="@(()=>OpenDeleteConteinerModal(context.Item))" />
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+}
+else
+{
+    <span>Carregando ...</span>
+}
+
+
+
+
+@code {
+
+    List<Conteiner> ListaConteiner { get; set; }
+
+    bool OnInitializedCompleted = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ListaConteiner = await _conteinerService.GetAllAsync();
+        OnInitializedCompleted = true;
+    }
+
+
+    private async Task OpenAddConteinerModal()
+    {
+        _snackBar.Clear();
+        _snackBar.Configuration.PositionClass = Defaults.Classes.Position.BottomRight;
+
+        var dialog = await _dialogService.ShowAsync<CadConteinerModal>("Cadastrar Conteiner");
+        var result = await dialog.Result;
+
+        Conteiner novoConteiner = result.Data as Conteiner;
+
+        if (novoConteiner is null)
+        {
+            _snackBar.Add("Operacao cancelada", Severity.Normal);
+            return;
+        }
+
+        await _conteinerService.CreateAsync(novoConteiner);
+        ListaConteiner.Add(novoConteiner);
+
+        _snackBar.Add("Conteiner adicionado com sucesso", Severity.Normal);
+
+
+        return;
+    }
+
+    private async Task OpenEditConteinerModal(string numero)
+    {
+        _snackBar.Clear();
+        _snackBar.Configuration.PositionClass = Defaults.Classes.Position.BottomRight;
+
+        var parameters = new DialogParameters<CadConteinerModal>
+        {
+            { x => x.ConteinerNumero, numero },
+        };
+
+        var dialog = await _dialogService.ShowAsync<CadConteinerModal>("Editar Conteiner", parameters);
+        var result = await dialog.Result;
+
+        Conteiner novoConteiner = result.Data as Conteiner;
+
+        if(novoConteiner is null)
+        {
+            _snackBar.Add("Operacao cancelada", Severity.Normal);
+            return;
+        }
+
+        await _conteinerService.UpdateAsync(novoConteiner);
+        ListaConteiner.RemoveAll(x => x.Numero == novoConteiner.Numero);
+        ListaConteiner.Add(novoConteiner);
+
+        _snackBar.Add("Conteiner Editado com sucesso", Severity.Normal);
+        return;
+    }
+
+    private async Task OpenDeleteConteinerModal(Conteiner obj)
+    {
+        bool? deletado = await _dialogService.ShowMessageBox($"Excluir Conteiner {obj.Numero}",$"Certeza que deseja exlcuir o conteiner {obj.Numero}?","Exlcuir","Cancelar");
+
+        if(deletado is not null && deletado.Value)
+        {
+            await _conteinerService.DeleteByIdAsync(obj.Numero);
+            ListaConteiner.Remove(obj);
+            _snackBar.Add($"Conteiner {obj.Numero} excluido com sucesso", Severity.Normal);
+
+        }else{
+            _snackBar.Add("Operacao cancelada", Severity.Normal);
+        }
+
+    }
+
+}

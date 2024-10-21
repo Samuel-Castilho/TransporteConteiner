@@ -1,0 +1,58 @@
+﻿@using MudBlazor
+@using Transporte.Persistencia.Services
+@using Transporte.Persistencia.Services.Interfaces
+@attribute [Route(RouteContants.Report)]
+@inject IReportService _reportService
+
+
+
+@if (OnInitializedCompleted)
+{
+    <h2>Movimentacoes por cliente</h2>
+    <MudDataGrid Items="@ListaMovPorCliente" Filterable="true" SortMode="@SortMode.None" Groupable="true">
+        <Columns>
+            <PropertyColumn Property="x => x.Cliente" />
+            <PropertyColumn Property="x => x.Quantidade" />
+        </Columns>
+    </MudDataGrid>
+    <hr />
+    <h2>Movimentacoes por Tipo de Movimentacao</h2>
+    <MudDataGrid Items="@ListaMovPorTipoMov" Filterable="true" SortMode="@SortMode.None" Groupable="true">
+        <Columns>
+            <PropertyColumn Property="x => x.TipoMovimentacao" />
+            <PropertyColumn Property="x => x.Quantidade" />
+        </Columns>
+    </MudDataGrid>
+    <h2>Sumário importacao / exportacao</h2>
+    <MudDataGrid Items="@ListaSumario" Filterable="true" SortMode="@SortMode.None" Groupable="true">
+        <Columns>
+            <PropertyColumn Property="x => x.Categoria" />
+            <PropertyColumn Property="x => x.Quantidade" />
+        </Columns>
+    </MudDataGrid>
+}
+else
+{
+    <span>Carregando ...</span>
+}
+
+
+@code {
+    List<ReportService.MovimentacaoPorCliente> ListaMovPorCliente { get; set; }
+    List<ReportService.MovimentacaoPorTipoMovimentacao> ListaMovPorTipoMov { get; set; }
+    List<ReportService.SumarioImportacaoExportacao> ListaSumario { get; set; }
+
+
+    bool OnInitializedCompleted = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ListaMovPorCliente = await _reportService.GetMovimentacoesPorCliente();
+        ListaMovPorTipoMov = await _reportService.GetMovimentacoesPorTipoMovimentacao();
+        ListaSumario = await _reportService.GetSumarioImportacaoExportacao();
+
+        OnInitializedCompleted = true;
+
+    }
+
+}

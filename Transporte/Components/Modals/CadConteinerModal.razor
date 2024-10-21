@@ -1,0 +1,131 @@
+﻿@using Models
+@using MudBlazor
+@using Transporte.Persistencia.Services.Interfaces
+
+@inject ISnackbar Snackbar
+@inject IConteinerService _conteinerService
+
+
+
+@if (OnInitializedCompleted){
+    
+
+<MudDialog>
+    <TitleContent>
+
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(ModoCad == 'C'? Icons.Material.Filled.Create : Icons.Material.Filled.Edit )" Class="mr-3 mb-n1" />
+            @if (ModoCad == 'C')
+            {
+                <span>Criacao de conteiner</span>
+            }
+            else
+            {
+                <span>Edição do conteiner @_Conteiner.Numero</span>
+            }
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm Model="@_Conteiner" @ref="@form" Validation="@(validator.ValidateValue)" ValidationDelay="0">
+            <MudTextField @bind-Value="@_Conteiner.Numero" Label="Numero do Conteiner" ReadOnly="@(ModoCad =='E')"  For="@(()=> _Conteiner.Numero)"/>
+            <MudTextField @bind-Value="@_Conteiner.Cliente" Label="Cliente"  For="@(()=> _Conteiner.Cliente)" />
+            <MudSelect @bind-Value="_Conteiner.Status" Label="Status" HelperText="Enum" AdornmentColor="Color.Secondary" For="@(()=> _Conteiner.Status)" ToStringFunc="@((x)=> (int)x==0 ?"Não definido" : x.ToString())">
+                @foreach (Conteiner.EStatus item in Enum.GetValues(typeof(Conteiner.EStatus)).Cast<Conteiner.EStatus>())
+                {
+                    <MudSelectItem Value="@item">@item</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect @bind-Value="_Conteiner.Tipo" Label="Tipo" HelperText="Enum" AdornmentColor="Color.Secondary" For="@(()=> _Conteiner.Tipo)"  ToStringFunc="@((x)=> (int)x==0 ?"Não definido" : x.ToString())">
+                @foreach (Conteiner.ETipoConteiner item in Enum.GetValues(typeof(Conteiner.ETipoConteiner)).Cast<Conteiner.ETipoConteiner>())
+                {
+                    <MudSelectItem Value="@item">@item</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect @bind-Value="_Conteiner.Categoria" Label="Categoria" HelperText="Enum" AdornmentColor="Color.Secondary" For="@(()=> _Conteiner.Categoria)" ToStringFunc="@((x)=> (int)x==0 ?"Não definido" : x.ToString())">
+                @foreach (Conteiner.ECategoria item in Enum.GetValues(typeof(Conteiner.ECategoria)).Cast<Conteiner.ECategoria>())
+                {
+                    <MudSelectItem Value="@item">@item</MudSelectItem>
+                }
+            </MudSelect>
+        </MudForm>
+
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Error" OnClick="Submit">@(ModoCad == 'C' ? "Criar" : "Editar")</MudButton>
+    </DialogActions>
+    </MudDialog>
+}
+else
+{
+    <span>Carregando ...</span>
+}
+@code {
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public Conteiner Conteiner { get; set; }
+
+    [Parameter]
+    public string ConteinerNumero { get; set; }
+
+    private MudForm form { get; set; }
+
+
+    private Conteiner _Conteiner { get; set; }
+    private ConteinerValidator validator = new ConteinerValidator();
+
+    char ModoCad = ' ';
+
+    string TituloModal = "";
+
+    bool OnInitializedCompleted = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Conteiner is not null)
+        {
+            _Conteiner = Conteiner;
+            ModoCad = 'E';
+        }
+        else if (!string.IsNullOrEmpty(ConteinerNumero))
+        {
+            ModoCad = 'E';
+            _Conteiner = await _conteinerService.GetByIdAsync(ConteinerNumero);
+        }
+        else
+        {
+            _Conteiner = new Conteiner();
+            ModoCad = 'C';
+        }
+
+        if (ModoCad == 'C')
+        {
+            TituloModal = "Criacao de conteiner";
+        }
+        else
+        {
+            TituloModal = $"Edicao do conteiner {_Conteiner.Numero}";
+        }
+
+        OnInitializedCompleted = true;
+    }
+
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await form.Validate();
+
+        if (form.IsValid)
+        {
+            MudDialog.Close(DialogResult.Ok(_Conteiner));
+            return;
+        }
+        return;
+    }
+
+}
